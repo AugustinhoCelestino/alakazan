@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPG Display System</title>
+  <style>
+    :root {
+      --bg-dark: #121214;
+      --panel-bg: #1e1e24;
+      --accent-purple: #7b2cbf;
+      --accent-hover: #9d4edd;
+      --text-light: #e0e0e0;
+      --danger: #d90429;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-light); }
+
+    /* ROTEADOR DE TELAS */
+    .view { display: none; width: 100vw; height: 100vh; }
+    .active-view { display: flex; }
+
+    /* --- TELA DO MESTRE --- */
+    #master-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #333;
+      padding-bottom: 15px;
+    }
+
+    .btn {
+      background: var(--accent-purple);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #ef233c; }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #0d0d0f;
+      color: white;
+    }
+
+    .preview-box {
+      width: 100%;
+      height: 300px;
+      background: #000;
+      border: 2px dashed #444;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    /* --- TELA DOS JOGADORES --- */
+    #player-view {
+      background-color: #000;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #player-image {
+      max-width: 100vw;
+      max-height: 100vh;
+      object-fit: contain;
+      transition: opacity 0.5s ease;
+      opacity: 0;
+    }
+
+    #player-image.visible {
+      opacity: 1;
+    }
+
+    /* BARRA DE MENSAGEM / MODOS */
+    .mode-selector {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      gap: 20px;
+      background: var(--panel-bg);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SELEÇÃO INICIAL DE MODO -->
+  <div id="mode-selector" class="mode-selector">
+    <button class="btn" onclick="initMode('master')">Abrir Painel do Mestre</button>
+    <button class="btn" onclick="initMode('player')">Abrir Tela dos Jogadores</button>
+  </div>
+
+  <!-- TELA DO MESTRE -->
+  <div id="master-view" class="view">
+    <div id="master-panel">
+      <header>
+        <h2>🛡️ Painel do Mestre - Controle Visual</h2>
+        <button class="btn" onclick="openPlayerWindow()">🖥️ Abrir Tela dos Jogadores em Nova Janela</button>
+      </header>
+
+      <div class="main-content">
+        <!-- Entrada de Imagens -->
+        <div class="card">
+          <h3>1. Adicionar Imagem</h3>
+          
+          <div class="input-group">
+            <input type="text" id="img-url-input" placeholder="Cole a URL da imagem aqui...">
+            <button class="btn" onclick="loadFromUrl()">Carregar</button>
+          </div>
+
+          <div style="text-align: center; color: #888;">ou</div>
+
+          <input type="file" id="img-file-input" accept="image/*" onchange="loadFromFile(event)">
+        </div>
+
+        <!-- Pré-visualização e Ações -->
+        <div class="card">
+          <h3>2. Pré-visualização & Controle</h3>
+          
+          <div class="preview-box">
+            <img id="master-preview" src="" alt="Nenhuma imagem selecionada" style="display:none;">
+            <span id="preview-placeholder">Nenhuma imagem carregada</span>
+          </div>
+
+          <div class="controls-grid">
+            <button class="btn" onclick="sendToPlayers(true)">▶️ Exibir para Jogadores</button>
+            <button class="btn btn-danger" onclick="toggleBlackout()">🕶️ Alternar Blackout</button>
+            <button class="btn btn-danger" onclick="clearDisplay()">❌ Limpar Tela</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DOS JOGADORES -->
+  <div id="player-view" class="view">
+    <img id="player-image" src="" alt="">
+  </div>
+
+  <script>
+    // Usando BroadcastChannel para sincronização em tempo real entre abas/janelas
+    const channel = new BroadcastChannel('rpg_display_channel');
+    let currentImageSrc = '';
+    let isBlackout = false;
+
+    function initMode(mode) {
+      document.getElementById('mode-selector').style.display = 'none';
+      if (mode === 'master') {
+        document.getElementById('master-view').classList.add('active-view');
+      } else {
+        document.getElementById('player-view').classList.add('active-view');
+        // Pedir atualização ao abrir
+        channel.postMessage({ type: 'REQUEST_STATE' });
+      }
+    }
+
+    function openPlayerWindow() {
+      window.open(window.location.href + '?mode=player', '_blank');
+    }
+
+    // Auto-detecta parâmetro de URL ?mode=player
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'player') {
+      initMode('player');
+    }
+
+    /* --- LÓGICA DO MESTRE --- */
+    function loadFromUrl() {
+      const url = document.getElementById('img-url-input').value.trim();
+      if (url) {
+        setMasterPreview(url);
+      }
+    }
+
+    function loadFromFile(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          setMasterPreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function setMasterPreview(src) {
+      currentImageSrc = src;
+      const previewImg = document.getElementById('master-preview');
+      const placeholder = document.getElementById('preview-placeholder');
+      
+      previewImg.src = src;
+      previewImg.style.display = 'block';
+      placeholder.style.display = 'none';
+    }
+
+    function sendToPlayers(show = true) {
+      if (!currentImageSrc) return;
+      isBlackout = !show;
+      channel.postMessage({
+        type: 'UPDATE_IMAGE',
+        src: currentImageSrc,
+        blackout: isBlackout
+      });
+    }
+
+    function toggleBlackout() {
+      isBlackout = !isBlackout;
+      channel.postMessage({
+        type: 'TOGGLE_BLACKOUT',
+        blackout: isBlackout
+      });
+    }
+
+    function clearDisplay() {
+      currentImageSrc = '';
+      isBlackout = false;
+      document.getElementById('master-preview').style.display = 'none';
+      document.getElementById('preview-placeholder').style.display = 'block';
+      channel.postMessage({ type: 'CLEAR' });
+    }
+
+    /* --- LÓGICA DE SINCRONIZAÇÃO (CANAL) --- */
+    channel.onmessage = (event) => {
+      const data = event.data;
+
+      // Se for a tela dos jogadores processando o comando do mestre
+      const playerImg = document.getElementById('player-image');
+
+      if (data.type === 'UPDATE_IMAGE') {
+        playerImg.src = data.src;
+        if (!data.blackout) {
+          playerImg.classList.add('visible');
+        } else {
+          playerImg.classList.remove('visible');
+        }
+      } else if (data.type === 'TOGGLE_BLACKOUT') {
+        if (data.blackout) {
+          playerImg.classList.remove('visible');
+        } else if (playerImg.src) {
+          playerImg.classList.add('visible');
+        }
+      } else if (data.type === 'CLEAR') {
+        playerImg.classList.remove('visible');
+        setTimeout(() => { playerImg.src = ''; }, 500);
+      } else if (data.type === 'REQUEST_STATE') {
+        // Envia o estado atual quando um novo jogador se conecta
+        if (currentImageSrc) {
+          sendToPlayers(!isBlackout);
+        }
+      }
+    };
+  </script>
+</body>
+</html>
