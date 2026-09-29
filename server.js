@@ -6,7 +6,8 @@ const url = require('url');
 // Estado compartilhado entre as abas
 let currentState = {
   imageData: null,
-  blackout: false
+  blackout: false,
+  players: []
 };
 
 const server = http.createServer((req, res) => {
@@ -35,8 +36,23 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        currentState = data;
-        console.log('📤 Mensagem recebida:', data.type);
+        
+        // Separar dados de jogadores dos dados de imagem
+        if (data.type === 'SYNC_PLAYERS') {
+          currentState.players = data.players || [];
+          console.log('📤 Jogadores sincronizados:', currentState.players.length);
+        } else if (data.type === 'UPDATE_IMAGE' || data.type === 'TOGGLE_BLACKOUT') {
+          // Preservar jogadores ao atualizar imagem
+          if (data.players) {
+            currentState.players = data.players;
+          }
+          currentState = { ...currentState, ...data };
+          console.log('📤 Mensagem recebida:', data.type);
+        } else {
+          currentState = data;
+          console.log('📤 Mensagem recebida:', data.type);
+        }
+        
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (e) {

@@ -46,9 +46,31 @@
           </div>
         </div>
 
+        <!-- Gerenciamento de Jogadores -->
+        <div class="card">
+          <h3>2. Jogadores</h3>
+          
+          <div class="input-group">
+            <input type="text" id="player-name-input" placeholder="Nome do jogador...">
+            <button class="btn" onclick="addPlayerUI()">➕ Adicionar</button>
+          </div>
+
+          <div style="text-align: center; color: #888; margin: 10px 0;">ou escolha imagem</div>
+
+          <input type="file" id="player-image-input" accept="image/*" onchange="addPlayerWithImage(event)">
+          
+          <!-- Lista de Jogadores -->
+          <div id="players-list" class="players-list" style="display:none;">
+            <h4 style="margin-bottom: 10px;">Jogadores: <span id="players-count">0</span></h4>
+            <div id="players-container"></div>
+          </div>
+
+          <div id="no-players-msg" style="text-align: center; color: #888; margin-top: 10px;">Nenhum jogador adicionado</div>
+        </div>
+
         <!-- Pré-visualização e Ações -->
         <div class="card">
-          <h3>2. Pré-visualização & Controle</h3>
+          <h3>3. Pré-visualização & Controle</h3>
           
           <div class="preview-box">
             <img id="master-preview" src="" alt="Nenhuma imagem selecionada" style="display:none;">
@@ -69,7 +91,12 @@
 
   <!-- TELA DOS JOGADORES -->
   <div id="player-view" class="view">
-    <img id="player-image" src="" alt="">
+    <div id="player-content">
+      <img id="player-image" src="" alt="">
+    </div>
+    <div id="players-footer">
+      <div id="players-footer-list"></div>
+    </div>
   </div>
 
   <script>
@@ -77,6 +104,7 @@
 var imagesList = [];  // Array para armazenar todas as imagens
 var currentImageIndex = -1;  // Índice da imagem selecionada
 var isBlackout = false;
+var playersList = [];  // Array para armazenar jogadores
 
 // Sistema de sincronização entre abas via HTTP API
 function sendMessageToTab(messageData) {
@@ -127,11 +155,24 @@ function handleMessage(data) {
     console.log('Limpando tela');
     playerImg.classList.remove('visible');
     setTimeout(() => { playerImg.src = ''; }, 500);
+  } else if (data.type === 'SYNC_PLAYERS') {
+    console.log('Sincronizando jogadores:', data.players);
+    if (data.players) {
+      playersList = data.players;
+      renderPlayersFooter(data.players);
+    }
   } else if (data.type === 'REQUEST_STATE') {
     console.log('REQUEST_STATE recebido');
     // Envia o estado atual quando um novo jogador se conecta
     if (currentImageIndex >= 0 && currentImageIndex < imagesList.length) {
       sendToPlayers(!isBlackout);
+    }
+    // Também sincroniza os jogadores
+    if (playersList.length > 0) {
+      sendMessageToTab({
+        type: 'SYNC_PLAYERS',
+        players: playersList
+      });
     }
   }
 }
@@ -308,6 +349,101 @@ function clearDisplay() {
   clearPreview();
   renderGallery();
   sendMessageToTab({ type: 'CLEAR' });
+}
+
+/* --- GERENCIAMENTO DE JOGADORES --- */
+function addPlayerUI() {
+  const nameInput = document.getElementById('player-name-input');
+  const name = nameInput.value.trim();
+  
+  if (name) {
+    const player = {
+      id: Date.now(),
+      name: name,
+      image: '' // Será adicionada com a imagem de arquivo
+    };
+    playersList.push(player);
+    nameInput.value = '';
+    renderPlayersList();
+    syncPlayers();
+  }
+}
+
+function addPlayerWithImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const nameInput = document.getElementById('player-name-input');
+    const name = nameInput.value.trim() || file.name.split('.')[0];
+    
+    const player = {
+      id: Date.now(),
+      name: name,
+      image: e.target.result // Data URL da imagem
+    };
+    playersList.push(player);
+    nameInput.value = '';
+    document.getElementById('player-image-input').value = '';
+    renderPlayersList();
+    syncPlayers();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePlayer(playerId) {
+  playersList = playersList.filter(p => p.id !== playerId);
+  renderPlayersList();
+  syncPlayers();
+}
+
+function renderPlayersList() {
+  const container = document.getElementById('players-container');
+  const listDiv = document.getElementById('players-list');
+  const noPlayersMsg = document.getElementById('no-players-msg');
+  const playersCount = document.getElementById('players-count');
+  
+  if (playersList.length === 0) {
+    listDiv.style.display = 'none';
+    noPlayersMsg.style.display = 'block';
+    return;
+  }
+  
+  listDiv.style.display = 'block';
+  noPlayersMsg.style.display = 'none';
+  playersCount.textContent = playersList.length;
+  
+  container.innerHTML = playersList.map(player => `
+    <div class="player-item">
+      ${player.image ? `<img class="player-item-avatar" src="${player.image}" alt="${player.name}">` : '<div class="player-item-avatar" style="background: #666;"></div>'}
+      <span class="player-item-name">${player.name}</span>
+      <button class="player-item-delete" onclick="removePlayer(${player.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function syncPlayers() {
+  sendMessageToTab({
+    type: 'SYNC_PLAYERS',
+    players: playersList
+  });
+}
+
+function renderPlayersFooter(players) {
+  const footer = document.getElementById('players-footer-list');
+  
+  if (!players || players.length === 0) {
+    footer.innerHTML = '';
+    return;
+  }
+  
+  footer.innerHTML = players.map(player => `
+    <div class="footer-player">
+      ${player.image ? `<img class="footer-player-avatar" src="${player.image}" alt="${player.name}">` : '<div class="footer-player-avatar" style="background: #666;"></div>'}
+      <div class="footer-player-name">${player.name}</div>
+    </div>
+  `).join('');
 }
 
   </script>
