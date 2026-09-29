@@ -12,7 +12,7 @@ body { background-color: var(--bg-dark); color: var(--text-light); }
 
 /* ROTEADOR DE TELAS */
 .view { display: none; width: 100vw; height: 100vh; }
-.active-view { display: flex; }
+.active-view { display: flex; flex-direction: column; overflow-y: auto; }
 
 /* --- TELA DO MESTRE --- */
 #master-panel {
@@ -20,8 +20,8 @@ body { background-color: var(--bg-dark); color: var(--text-light); }
   flex-direction: column;
   padding: 20px;
   gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  flex: 1;
 }
 
 header {
