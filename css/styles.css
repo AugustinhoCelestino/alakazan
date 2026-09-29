@@ -108,9 +108,16 @@ input[type="text"] {
 /* --- TELA DOS JOGADORES --- */
 #player-view {
   background-color: #000;
+  position: relative;
+  overflow: hidden;
+  display: none;
+}
+
+#player-view.active-view {
+  display: flex;
   justify-content: center;
   align-items: center;
-  position: relative;
+  flex-direction: row;
   overflow: hidden;
 }
 
