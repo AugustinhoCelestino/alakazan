@@ -25,7 +25,7 @@
       <div class="main-content">
         <!-- Entrada de Imagens -->
         <div class="card">
-          <h3>1. Adicionar Imagem</h3>
+          <h3>1. Adicionar Imagens</h3>
           
           <div class="input-group">
             <input type="text" id="img-url-input" placeholder="Cole a URL da imagem aqui...">
@@ -34,7 +34,16 @@
 
           <div style="text-align: center; color: #888;">ou</div>
 
-          <input type="file" id="img-file-input" accept="image/*" onchange="loadFromFile(event)">
+          <input type="file" id="img-file-input" accept="image/*" multiple onchange="loadFromFile(event)">
+          
+          <!-- Galeria de Imagens Carregadas -->
+          <div id="images-gallery" class="images-gallery" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h4 style="margin: 0;">Imagens Carregadas: <span id="images-count">0</span></h4>
+              <span id="current-image-info" style="font-size: 12px; color: #aaa;"></span>
+            </div>
+            <div id="gallery-list" class="gallery-list"></div>
+          </div>
         </div>
 
         <!-- Pré-visualização e Ações -->
@@ -47,10 +56,11 @@
           </div>
 
           <div class="controls-grid">
-            <button class="btn" onclick="sendToPlayers(true)">▶️ Exibir para Jogadores</button>
-            <button class="btn btn-danger" onclick="toggleBlackout()">🕶️ Alternar Blackout</button>
-            <button class="btn btn-danger" onclick="clearDisplay()">❌ Limpar Tela</button>
-          </div>
+            <button class=\"btn\" onclick=\"selectImage(Math.max(0, currentImageIndex - 1))\" id=\"btn-prev\">⬅️ Anterior</button>
+            <button class=\"btn\" onclick=\"selectImage(Math.min(imagesList.length - 1, currentImageIndex + 1))\" id=\"btn-next\">Próxima ➡️</button>
+            <button class=\"btn\" onclick=\"sendToPlayers(true)\">▶️ Exibir</button>
+            <button class=\"btn btn-danger\" onclick=\"toggleBlackout()\">🕶️ Blackout</button>
+          </div>\n          <button class=\"btn btn-danger\" onclick=\"clearDisplay()\" style=\"width: 100%; margin-top: 10px;\">❌ Limpar Tudo</button>
         </div>
       </div>
     </div>
