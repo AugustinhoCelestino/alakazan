@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPG Display System</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+  <!-- SELEÇÃO INICIAL DE MODO -->
+  <div id="mode-selector" class="mode-selector">
+    <button class="btn" onclick="initMode('master')">Abrir Painel do Mestre</button>
+    <button class="btn" onclick="initMode('player')">Abrir Tela dos Jogadores</button>
+  </div>
+
+  <!-- TELA DO MESTRE -->
+  <div id="master-view" class="view">
+    <div id="master-panel">
+      <header>
+        <h2>🛡️ Painel do Mestre - Controle Visual</h2>
+        <button class="btn" onclick="openPlayerWindow()">🖥️ Abrir Tela dos Jogadores em Nova Janela</button>
+      </header>
+
+      <div class="main-content">
+        <!-- Entrada de Imagens -->
+        <div class="card">
+          <h3>1. Adicionar Imagem</h3>
+          
+          <div class="input-group">
+            <input type="text" id="img-url-input" placeholder="Cole a URL da imagem aqui...">
+            <button class="btn" onclick="loadFromUrl()">Carregar</button>
+          </div>
+
+          <div style="text-align: center; color: #888;">ou</div>
+
+          <input type="file" id="img-file-input" accept="image/*" onchange="loadFromFile(event)">
+        </div>
+
+        <!-- Pré-visualização e Ações -->
+        <div class="card">
+          <h3>2. Pré-visualização & Controle</h3>
+          
+          <div class="preview-box">
+            <img id="master-preview" src="" alt="Nenhuma imagem selecionada" style="display:none;">
+            <span id="preview-placeholder">Nenhuma imagem carregada</span>
+          </div>
+
+          <div class="controls-grid">
+            <button class="btn" onclick="sendToPlayers(true)">▶️ Exibir para Jogadores</button>
+            <button class="btn btn-danger" onclick="toggleBlackout()">🕶️ Alternar Blackout</button>
+            <button class="btn btn-danger" onclick="clearDisplay()">❌ Limpar Tela</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DOS JOGADORES -->
+  <div id="player-view" class="view">
+    <img id="player-image" src="" alt="">
+  </div>
+
+  <script src="../js/script.js"></script>
+</body>
+</html>
