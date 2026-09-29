@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RPG Display System</title>
-  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
 
@@ -74,10 +74,67 @@
 
   <script>
 // Usando BroadcastChannel para sincronização em tempo real entre abas/janelas
-const channel = new BroadcastChannel('rpg_display_channel');
-let imagesList = [];  // Array para armazenar todas as imagens
-let currentImageIndex = -1;  // Índice da imagem selecionada
-let isBlackout = false;
+var imagesList = [];  // Array para armazenar todas as imagens
+var currentImageIndex = -1;  // Índice da imagem selecionada
+var isBlackout = false;
+
+// Sistema de sincronização entre abas via HTTP API
+function sendMessageToTab(messageData) {
+  // Enviar para servidor via POST
+  fetch('/api/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(messageData)
+  }).catch(e => console.error('Erro ao enviar mensagem:', e));
+}
+
+// Polling para verificar novas mensagens do servidor
+setInterval(async () => {
+  try {
+    const response = await fetch('/api/message');
+    const data = await response.json();
+    
+    // Se houver dado, processar
+    if (data && data.type) {
+      handleMessage(data);
+    }
+  } catch (e) {
+    console.error('Erro ao buscar mensagem:', e);
+  }
+}, 200); // Verificar a cada 200ms
+
+function handleMessage(data) {
+  const playerImg = document.getElementById('player-image');
+  
+  if (!playerImg) return;
+
+  if (data.type === 'UPDATE_IMAGE') {
+    console.log('Atualizando imagem');
+    playerImg.src = data.src;
+    if (!data.blackout) {
+      playerImg.classList.add('visible');
+    } else {
+      playerImg.classList.remove('visible');
+    }
+  } else if (data.type === 'TOGGLE_BLACKOUT') {
+    console.log('Toggle blackout:', data.blackout);
+    if (data.blackout) {
+      playerImg.classList.remove('visible');
+    } else if (playerImg.src) {
+      playerImg.classList.add('visible');
+    }
+  } else if (data.type === 'CLEAR') {
+    console.log('Limpando tela');
+    playerImg.classList.remove('visible');
+    setTimeout(() => { playerImg.src = ''; }, 500);
+  } else if (data.type === 'REQUEST_STATE') {
+    console.log('REQUEST_STATE recebido');
+    // Envia o estado atual quando um novo jogador se conecta
+    if (currentImageIndex >= 0 && currentImageIndex < imagesList.length) {
+      sendToPlayers(!isBlackout);
+    }
+  }
+}
 
 function initMode(mode) {
   document.getElementById('mode-selector').style.display = 'none';
@@ -86,7 +143,7 @@ function initMode(mode) {
   } else {
     document.getElementById('player-view').classList.add('active-view');
     // Pedir atualização ao abrir
-    channel.postMessage({ type: 'REQUEST_STATE' });
+    sendMessageToTab({ type: 'REQUEST_STATE' });
   }
 }
 
@@ -229,7 +286,7 @@ function clearPreview() {
 function sendToPlayers(show = true) {
   if (currentImageIndex < 0 || currentImageIndex >= imagesList.length) return;
   isBlackout = !show;
-  channel.postMessage({
+  sendMessageToTab({
     type: 'UPDATE_IMAGE',
     src: imagesList[currentImageIndex],
     blackout: isBlackout
@@ -238,7 +295,7 @@ function sendToPlayers(show = true) {
 
 function toggleBlackout() {
   isBlackout = !isBlackout;
-  channel.postMessage({
+  sendMessageToTab({
     type: 'TOGGLE_BLACKOUT',
     blackout: isBlackout
   });
@@ -250,39 +307,9 @@ function clearDisplay() {
   isBlackout = false;
   clearPreview();
   renderGallery();
-  channel.postMessage({ type: 'CLEAR' });
+  sendMessageToTab({ type: 'CLEAR' });
 }
 
-/* --- LÓGICA DE SINCRONIZAÇÃO (CANAL) --- */
-channel.onmessage = (event) => {
-  const data = event.data;
-
-  // Se for a tela dos jogadores processando o comando do mestre
-  const playerImg = document.getElementById('player-image');
-
-  if (data.type === 'UPDATE_IMAGE') {
-    playerImg.src = data.src;
-    if (!data.blackout) {
-      playerImg.classList.add('visible');
-    } else {
-      playerImg.classList.remove('visible');
-    }
-  } else if (data.type === 'TOGGLE_BLACKOUT') {
-    if (data.blackout) {
-      playerImg.classList.remove('visible');
-    } else if (playerImg.src) {
-      playerImg.classList.add('visible');
-    }
-  } else if (data.type === 'CLEAR') {
-    playerImg.classList.remove('visible');
-    setTimeout(() => { playerImg.src = ''; }, 500);
-  } else if (data.type === 'REQUEST_STATE') {
-    // Envia o estado atual quando um novo jogador se conecta
-    if (currentImageIndex >= 0 && currentImageIndex < imagesList.length) {
-      sendToPlayers(!isBlackout);
-    }
-  }
-};
   </script>
 </body>
 </html>
