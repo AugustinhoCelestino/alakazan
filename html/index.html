@@ -56,11 +56,12 @@
           </div>
 
           <div class="controls-grid">
-            <button class=\"btn\" onclick=\"selectImage(Math.max(0, currentImageIndex - 1))\" id=\"btn-prev\">⬅️ Anterior</button>
-            <button class=\"btn\" onclick=\"selectImage(Math.min(imagesList.length - 1, currentImageIndex + 1))\" id=\"btn-next\">Próxima ➡️</button>
-            <button class=\"btn\" onclick=\"sendToPlayers(true)\">▶️ Exibir</button>
-            <button class=\"btn btn-danger\" onclick=\"toggleBlackout()\">🕶️ Blackout</button>
-          </div>\n          <button class=\"btn btn-danger\" onclick=\"clearDisplay()\" style=\"width: 100%; margin-top: 10px;\">❌ Limpar Tudo</button>
+            <button class="btn" onclick="selectImage(Math.max(0, currentImageIndex - 1))" id="btn-prev">⬅️ Anterior</button>
+            <button class="btn" onclick="selectImage(Math.min(imagesList.length - 1, currentImageIndex + 1))" id="btn-next">Próxima ➡️</button>
+            <button class="btn" onclick="sendToPlayers(true)">▶️ Exibir</button>
+            <button class="btn btn-danger" onclick="toggleBlackout()">🕶️ Blackout</button>
+          </div>
+          <button class="btn btn-danger" onclick="clearDisplay()" style="width: 100%; margin-top: 10px;">❌ Limpar Tudo</button>
         </div>
       </div>
     </div>
