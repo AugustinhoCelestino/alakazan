@@ -57,8 +57,8 @@ class P2PScreenShare {
             this.shareCode = this.generateShareCode();
             document.getElementById('shareCode').textContent = this.shareCode;
 
-            // Gerar QR Code
-            this.generateQRCode(this.shareCode);
+            // TODO: Gerar QR Code (será implementado em breve)
+            // this.generateQRCode(this.shareCode);
 
             // Capturar tela
             try {
