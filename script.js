@@ -368,3 +368,5 @@ window.addEventListener('beforeunload', () => {
         window.screenShare.stopSharing();
     }
 });
+/ *   A t u a l i z a r   c a c h e   * /  
+ 
