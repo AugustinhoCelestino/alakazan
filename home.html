@@ -116,7 +116,6 @@
                     { urls: 'stun:stun2.l.google.com:19302' }
                 ];
                 this.init();
-                this.showDebugInfo();
             }
 
             init() {
@@ -133,15 +132,6 @@
                     document.getElementById('joinCode').value = urlParams.get('join');
                     this.showJoin();
                 }
-            }
-
-            showDebugInfo() {
-                console.log('📊 DEBUG INFO:');
-                console.log('localStorage:', localStorage.getItem('activeCodes'));
-                console.log('Current URL:', window.location.href);
-                setInterval(() => {
-                    console.log('🔄 Sync: activeCodes =', localStorage.getItem('activeCodes'));
-                }, 2000);
             }
 
             share() {
