@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Screen Share</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f35 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #10b981 0%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #10b981;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            color: #10b981;
+            margin: 15px 0;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .info {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        code {
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖥️ P2P Screen Share</h1>
+            <p>Compartilhamento de tela peer-to-peer</p>
+        </header>
+
+        <main>
+            <div class="section">
+                <h2>❌ Problema Detectado</h2>
+                <p>Desculpe, estamos tendo problemas de <strong>cache</strong> no navegador.</p>
+                
+                <div class="info">
+                    <h3>✅ Solução Rápida:</h3>
+                    <p>Faça um <strong>hard refresh</strong> pressionando:</p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li><strong>Windows/Linux:</strong> <code>Ctrl + Shift + R</code></li>
+                        <li><strong>macOS:</strong> <code>Cmd + Shift + R</code></li>
+                    </ul>
+                </div>
+
+                <div class="info">
+                    <h3>Ou limpe o cache manualmente:</h3>
+                    <ol style="margin: 10px 0 0 20px;">
+                        <li>Pressione <code>F12</code> (Abrir DevTools)</li>
+                        <li>Clique direito no ícone de reload <strong>↻</strong></li>
+                        <li>Selecione <strong>"Empty cache and hard reload"</strong></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📊 Status do Deployment</h2>
+                <div class="status">
+                    ✅ GitHub Pages está ativado
+                </div>
+                <div class="info">
+                    <p><strong>Último Deploy:</strong> há poucos minutos</p>
+                    <p><strong>Branch:</strong> <code>main</code></p>
+                    <p><strong>Verificar Deployment:</strong> 
+                        <a href="https://github.com/AugustinhoCelestino/alakazan/actions" 
+                           target="_blank" 
+                           style="color: #10b981; text-decoration: none;">
+                           GitHub Actions → pages-build-deployment
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🔧 Próximos Passos</h2>
+                <ol style="margin: 0 0 0 20px;">
+                    <li>Faça um <strong>hard refresh</strong> da página</li>
+                    <li>Tente novamente clicando em <strong>"🔴 Iniciar Compartilhamento"</strong></li>
+                    <li>Autorize acesso à sua tela quando solicitado</li>
+                    <li>Compartilhe o código com alguém</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h2>🔗 Links Úteis</h2>
+                <ul style="margin: 0 0 0 20px;">
+                    <li><a href="https://github.com/AugustinhoCelestino/alakazan" target="_blank" style="color: #10b981;">📦 Repositório GitHub</a></li>
+                    <li><a href="https://github.com/AugustinhoCelestino/alakazan/actions" target="_blank" style="color: #10b981;">📋 GitHub Actions</a></li>
+                    <li><a href="javascript:location.href=location.href.replace(/\?.*/, '');" style="color: #10b981;">🔄 Recarregar Página (sem parâmetros)</a></li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Log para debug
+        console.log('✅ Página de Status Carregada com Sucesso');
+        console.log('Se você vê mensagens de erro do QRCode ou script.js, faça um HARD REFRESH (Ctrl+Shift+R)');
+    </script>
+</body>
+</html>

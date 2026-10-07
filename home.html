@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Screen Share</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f35 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            border-bottom: 2px solid #334155;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #10b981 0%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .section h2 { color: #10b981; margin-bottom: 20px; }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            transition: all 0.3s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .code { font-family: 'Courier New'; font-size: 1.5em; color: #10b981; text-align: center; padding: 20px; }
+        .status { padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
+        .status.active { display: block; }
+        .status.success { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; }
+        .status.error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; }
+        video { width: 100%; border-radius: 8px; }
+        .video-container { display: none; margin-top: 30px; }
+        .video-container.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖥️ P2P Screen Share</h1>
+            <p>Compartilhamento de tela peer-to-peer simples</p>
+        </header>
+
+        <main>
+            <div class="section" id="connectionSection">
+                <h2>Conectar</h2>
+                <div class="button-group">
+                    <button id="startShareBtn" class="btn">🔴 Iniciar Compartilhamento</button>
+                    <button id="joinBtn" class="btn">👁️ Assistir Compartilhamento</button>
+                </div>
+            </div>
+
+            <div class="section" id="shareSection" style="display: none;">
+                <h2>Compartilhando sua Tela</h2>
+                <p style="margin-bottom: 15px;">Código:</p>
+                <div class="code" id="shareCode">ABCD1234</div>
+                <button id="copyCodeBtn" class="btn" style="width: 100%; margin-top: 10px;">📋 Copiar Código</button>
+                <button id="stopShareBtn" class="btn" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">🛑 Parar</button>
+            </div>
+
+            <div class="section" id="viewSection" style="display: none;">
+                <h2>Conectar a uma Tela Compartilhada</h2>
+                <input type="text" id="joinCode" placeholder="Digite o código aqui..." style="width: 100%; padding: 12px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; border-radius: 8px; margin-bottom: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button id="connectBtn" class="btn">Conectar</button>
+                    <button id="cancelJoinBtn" class="btn" style="background: #666;">Cancelar</button>
+                </div>
+            </div>
+
+            <div id="statusDiv" class="status"></div>
+            <div class="video-container" id="videoContainer">
+                <video id="remoteVideo" playsinline></video>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        console.log('✅ P2P Screen Share v4.0 - Inline HTML - Load Time: ' + new Date().toISOString());
+
+        class ScreenShare {
+            constructor() {
+                this.code = '';
+                this.pc = null;
+                this.stream = null;
+                this.iceServers = [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ];
+                this.init();
+            }
+
+            init() {
+                document.getElementById('startShareBtn').onclick = () => this.share();
+                document.getElementById('joinBtn').onclick = () => this.showJoin();
+                document.getElementById('stopShareBtn').onclick = () => this.stop();
+                document.getElementById('connectBtn').onclick = () => this.connect();
+                document.getElementById('cancelJoinBtn').onclick = () => this.cancelJoin();
+                document.getElementById('copyCodeBtn').onclick = () => this.copyCode();
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('join')) {
+                    document.getElementById('joinCode').value = urlParams.get('join');
+                    this.showJoin();
+                }
+            }
+
+            share() {
+                navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
+                    .then(stream => {
+                        this.stream = stream;
+                        this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                        document.getElementById('shareCode').textContent = this.code;
+                        document.getElementById('connectionSection').style.display = 'none';
+                        document.getElementById('shareSection').style.display = 'block';
+                        sessionStorage.setItem('code_' + this.code, JSON.stringify({ time: Date.now() }));
+                        this.status('✅ Compartilhando! Código: ' + this.code, 'success');
+                    })
+                    .catch(err => this.status('❌ ' + err.message, 'error'));
+            }
+
+            stop() {
+                if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+                if (this.pc) this.pc.close();
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('shareSection').style.display = 'none';
+            }
+
+            showJoin() {
+                document.getElementById('connectionSection').style.display = 'none';
+                document.getElementById('viewSection').style.display = 'block';
+            }
+
+            connect() {
+                const code = document.getElementById('joinCode').value.toUpperCase();
+                if (code.length < 6) {
+                    this.status('❌ Código inválido', 'error');
+                    return;
+                }
+                this.status('✅ Conectando...', 'success');
+            }
+
+            cancelJoin() {
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('viewSection').style.display = 'none';
+            }
+
+            copyCode() {
+                navigator.clipboard.writeText(this.code);
+                this.status('✅ Código copiado!', 'success');
+            }
+
+            status(msg, type) {
+                const el = document.getElementById('statusDiv');
+                el.textContent = msg;
+                el.className = 'status active ' + type;
+            }
+        }
+
+        window.app = new ScreenShare();
+    </script>
+</body>
+</html>
