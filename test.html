@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Screen Share - TEST</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        button { padding: 15px; font-size: 1.1em; margin: 10px 0; cursor: pointer; background: #10b981; color: white; border: none; border-radius: 5px; width: 100%; }
+        button:hover { background: #059669; }
+        .code { font-size: 2em; font-weight: bold; color: #10b981; padding: 20px; background: #1e293b; border-radius: 5px; text-align: center; margin: 20px 0; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .status.ok { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .status.error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        input { width: 100%; padding: 10px; font-size: 1em; margin: 10px 0; }
+        #shareSection, #viewSection { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ P2P Screen Share TEST</h1>
+        
+        <div id="connectionSection">
+            <h2>Conexão</h2>
+            <button id="startShareBtn">🔴 INICIAR COMPARTILHAMENTO</button>
+            <button id="joinBtn">👁️ ASSISTIR COMPARTILHAMENTO</button>
+        </div>
+
+        <div id="shareSection">
+            <h2>Compartilhando</h2>
+            <p>Código:</p>
+            <div class="code" id="shareCode">LOADING...</div>
+            <button id="copyCodeBtn">📋 Copiar</button>
+            <button id="captureBtn" style="background: #8b5cf6;">📹 Capturar Tela</button>
+            <button id="stopShareBtn" style="background: #ef4444;">🛑 Parar</button>
+        </div>
+
+        <div id="viewSection">
+            <h2>Conectar</h2>
+            <input type="text" id="joinCode" placeholder="Cole o código aqui...">
+            <button id="connectBtn">Conectar</button>
+            <button id="cancelBtn">Cancelar</button>
+        </div>
+
+        <div id="statusDiv" class="status ok" style="display: none;"></div>
+    </div>
+
+    <script>
+        const app = {
+            code: '',
+            init() {
+                document.getElementById('startShareBtn').onclick = () => this.share();
+                document.getElementById('joinBtn').onclick = () => this.join();
+                document.getElementById('stopShareBtn').onclick = () => this.stop();
+                document.getElementById('copyCodeBtn').onclick = () => this.copy();
+                document.getElementById('captureBtn').onclick = () => this.capture();
+                document.getElementById('connectBtn').onclick = () => this.connect();
+                document.getElementById('cancelBtn').onclick = () => this.cancelJoin();
+                console.log('✅ APP INICIADO');
+            },
+            
+            share() {
+                console.log('SHARE CALLED');
+                this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                console.log('Código gerado:', this.code);
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                codes[this.code] = true;
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                console.log('localStorage:', localStorage.getItem('activeCodes'));
+                
+                document.getElementById('connectionSection').style.display = 'none';
+                document.getElementById('shareSection').style.display = 'block';
+                document.getElementById('shareCode').textContent = this.code;
+                this.status('✅ Código gerado: ' + this.code, 'ok');
+            },
+            
+            join() {
+                document.getElementById('connectionSection').style.display = 'none';
+                document.getElementById('viewSection').style.display = 'block';
+            },
+            
+            connect() {
+                const code = document.getElementById('joinCode').value.toUpperCase();
+                console.log('Conectando com:', code);
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                console.log('Códigos disponíveis:', codes);
+                
+                if (codes[code]) {
+                    this.status('✅ Conectado ao ' + code, 'ok');
+                } else {
+                    this.status('❌ Código não encontrado', 'error');
+                }
+            },
+            
+            copy() {
+                navigator.clipboard.writeText(this.code);
+                this.status('✅ Copiado!', 'ok');
+            },
+            
+            capture() {
+                navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+                    .then(s => { this.status('✅ Tela capturada', 'ok'); })
+                    .catch(e => { this.status('ℹ️ Cancelado', 'ok'); });
+            },
+            
+            stop() {
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                delete codes[this.code];
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('shareSection').style.display = 'none';
+                this.status('✅ Parado', 'ok');
+            },
+            
+            cancelJoin() {
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('viewSection').style.display = 'none';
+            },
+            
+            status(msg, type) {
+                const el = document.getElementById('statusDiv');
+                el.textContent = msg;
+                el.className = 'status ' + type;
+                el.style.display = 'block';
+            }
+        };
+        
+        app.init();
+    </script>
+</body>
+</html>
