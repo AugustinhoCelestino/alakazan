@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Screen Share</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; color: #10b981; }
+        button { padding: 12px 20px; font-size: 1em; margin: 10px 0; cursor: pointer; background: #10b981; color: white; border: none; border-radius: 5px; width: 100%; }
+        button:hover { background: #059669; }
+        button.cancel { background: #666; }
+        .code { font-size: 1.8em; font-weight: bold; color: #10b981; padding: 20px; background: #1e293b; border-radius: 5px; text-align: center; margin: 15px 0; border: 2px dashed #10b981; }
+        .status { padding: 12px; margin: 15px 0; border-radius: 5px; border-left: 4px solid; }
+        .status.ok { background: rgba(16, 185, 129, 0.1); border-left-color: #10b981; color: #10b981; }
+        .status.error { background: rgba(239, 68, 68, 0.1); border-left-color: #ef4444; color: #ef4444; }
+        input { width: 100%; padding: 10px; font-size: 1em; margin: 10px 0; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 5px; }
+        video { width: 100%; border-radius: 5px; background: #000; margin: 20px 0; }
+        .section { background: #1e293b; padding: 25px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #334155; }
+        .section h2 { color: #10b981; margin-bottom: 15px; }
+        #connectionSection, #shareSection, #viewSection { display: none; }
+        #videoContainer { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ P2P Screen Share</h1>
+        
+        <div id="connectionSection" class="section">
+            <h2>Escolha uma opção</h2>
+            <button id="startShareBtn">🔴 INICIAR COMPARTILHAMENTO</button>
+            <button id="joinBtn">👁️ ASSISTIR COMPARTILHAMENTO</button>
+        </div>
+
+        <div id="shareSection" class="section">
+            <h2>Compartilhando Tela</h2>
+            <p>Compartilhe este código:</p>
+            <div class="code" id="shareCode">CARREGANDO...</div>
+            <button id="copyCodeBtn">📋 Copiar Código</button>
+            <button id="captureBtn">📹 Iniciar Captura de Tela</button>
+            <button id="stopShareBtn" class="cancel">🛑 Parar Compartilhamento</button>
+            <div id="shareStatus" class="status ok" style="display: none;"></div>
+        </div>
+
+        <div id="viewSection" class="section">
+            <h2>Conectar a um Compartilhamento</h2>
+            <input type="text" id="joinCode" placeholder="Cole o código aqui...">
+            <button id="connectBtn">🔗 Conectar</button>
+            <button id="cancelBtn" class="cancel">❌ Cancelar</button>
+            <div id="viewStatus" class="status ok" style="display: none;"></div>
+        </div>
+
+        <div id="videoContainer">
+            <h2>Tela Compartilhada</h2>
+            <video id="remoteVideo" autoplay playsinline></video>
+            <button id="disconnectBtn" class="cancel">❌ Desconectar</button>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            code: '',
+            isOfferer: false,
+            pc: null,
+            stream: null,
+            signalingInterval: null,
+            
+            ICE_SERVERS: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ],
+            
+            init() {
+                document.getElementById('startShareBtn').onclick = () => this.startShare();
+                document.getElementById('joinBtn').onclick = () => this.showJoin();
+                document.getElementById('captureBtn').onclick = () => this.captureScreen();
+                document.getElementById('stopShareBtn').onclick = () => this.stop();
+                document.getElementById('copyCodeBtn').onclick = () => this.copyCode();
+                document.getElementById('connectBtn').onclick = () => this.connect();
+                document.getElementById('cancelBtn').onclick = () => this.cancel();
+                document.getElementById('disconnectBtn').onclick = () => this.disconnect();
+                console.log('✅ APP INICIADO');
+            },
+            
+            startShare() {
+                this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                this.isOfferer = true;
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                codes[this.code] = JSON.stringify({ offerer: true, sdp: null });
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                
+                document.getElementById('connectionSection').style.display = 'none';
+                document.getElementById('shareSection').style.display = 'block';
+                document.getElementById('shareCode').textContent = this.code;
+                this.status('✅ Código gerado: ' + this.code + ' (compartilhe com alguém!)', 'shareStatus', 'ok');
+                console.log('🎯 Compartilhamento iniciado:', this.code);
+            },
+            
+            captureScreen() {
+                navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
+                    .then(stream => {
+                        this.stream = stream;
+                        this.setupPeerConnection();
+                        this.status('✅ Tela capturada! Aguardando espectador...', 'shareStatus', 'ok');
+                        
+                        stream.getTracks()[0].onended = () => {
+                            this.stop();
+                        };
+                    })
+                    .catch(err => {
+                        this.status('❌ ' + err.message, 'shareStatus', 'error');
+                    });
+            },
+            
+            setupPeerConnection() {
+                if (this.pc) this.pc.close();
+                
+                this.pc = new RTCPeerConnection({ iceServers: this.ICE_SERVERS });
+                
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => {
+                        this.pc.addTrack(track, this.stream);
+                    });
+                }
+                
+                this.pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('📤 ICE Candidate:', event.candidate);
+                    }
+                };
+                
+                this.pc.onconnectionstatechange = () => {
+                    console.log('🔗 Conexão:', this.pc.connectionState);
+                    if (this.pc.connectionState === 'connected') {
+                        this.status('✅ Conectado! Transmitindo tela...', 'shareStatus', 'ok');
+                    }
+                };
+                
+                if (this.isOfferer) {
+                    this.pc.createOffer().then(offer => {
+                        return this.pc.setLocalDescription(offer);
+                    }).then(() => {
+                        const data = JSON.parse(localStorage.getItem('activeCodes') || '{}')[this.code] || '{}';
+                        const obj = JSON.parse(data);
+                        obj.sdp = JSON.stringify(this.pc.localDescription);
+                        
+                        const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                        codes[this.code] = JSON.stringify(obj);
+                        localStorage.setItem('activeCodes', JSON.stringify(codes));
+                        
+                        this.startSignaling();
+                    });
+                } else {
+                    this.pc.ontrack = (event) => {
+                        console.log('📥 Track recebido:', event.track.kind);
+                        const video = document.getElementById('remoteVideo');
+                        if (video.srcObject !== event.streams[0]) {
+                            video.srcObject = event.streams[0];
+                            this.status('✅ Recebendo tela!', 'viewStatus', 'ok');
+                        }
+                    };
+                }
+            },
+            
+            connect() {
+                const code = document.getElementById('joinCode').value.trim().toUpperCase();
+                if (!code) {
+                    this.status('❌ Cole um código!', 'viewStatus', 'error');
+                    return;
+                }
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                if (!codes[code]) {
+                    this.status('❌ Código não encontrado!', 'viewStatus', 'error');
+                    return;
+                }
+                
+                this.code = code;
+                this.isOfferer = false;
+                
+                document.getElementById('viewSection').style.display = 'none';
+                document.getElementById('videoContainer').style.display = 'block';
+                
+                this.status('⏳ Conectando...', 'viewStatus', 'ok');
+                
+                this.setupPeerConnection();
+                
+                setTimeout(() => {
+                    this.handleSignaling();
+                }, 1000);
+            },
+            
+            startSignaling() {
+                if (this.signalingInterval) clearInterval(this.signalingInterval);
+                
+                this.signalingInterval = setInterval(() => {
+                    const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                    const codeData = codes[this.code];
+                    
+                    if (!codeData) {
+                        clearInterval(this.signalingInterval);
+                        return;
+                    }
+                    
+                    const obj = JSON.parse(codeData);
+                    
+                    if (obj.answerSdp && !this.pc.currentRemoteDescription) {
+                        const answer = JSON.parse(obj.answerSdp);
+                        this.pc.setRemoteDescription(new RTCSessionDescription(answer))
+                            .catch(e => console.log('Erro ao aplicar answer:', e));
+                    }
+                }, 500);
+            },
+            
+            handleSignaling() {
+                const pollAnswer = () => {
+                    const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                    const codeData = codes[this.code];
+                    
+                    if (!codeData) {
+                        this.status('❌ Compartilhamento foi cancelado', 'viewStatus', 'error');
+                        return;
+                    }
+                    
+                    const obj = JSON.parse(codeData);
+                    
+                    if (obj.sdp && !this.pc.currentRemoteDescription) {
+                        try {
+                            const offer = JSON.parse(obj.sdp);
+                            this.pc.setRemoteDescription(new RTCSessionDescription(offer))
+                                .then(() => this.pc.createAnswer())
+                                .then(answer => this.pc.setLocalDescription(answer))
+                                .then(() => {
+                                    const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                                    const current = JSON.parse(codes[this.code] || '{}');
+                                    current.answerSdp = JSON.stringify(this.pc.localDescription);
+                                    codes[this.code] = JSON.stringify(current);
+                                    localStorage.setItem('activeCodes', JSON.stringify(codes));
+                                })
+                                .catch(e => {
+                                    console.log('Erro:', e);
+                                    setTimeout(pollAnswer, 1000);
+                                });
+                        } catch (e) {
+                            console.log('Parse error:', e);
+                            setTimeout(pollAnswer, 1000);
+                        }
+                    } else if (!obj.sdp) {
+                        setTimeout(pollAnswer, 500);
+                    }
+                };
+                
+                pollAnswer();
+            },
+            
+            copyCode() {
+                navigator.clipboard.writeText(this.code);
+                this.status('✅ Código copiado!', 'shareStatus', 'ok');
+            },
+            
+            showJoin() {
+                document.getElementById('connectionSection').style.display = 'none';
+                document.getElementById('viewSection').style.display = 'block';
+            },
+            
+            cancel() {
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('viewSection').style.display = 'none';
+                document.getElementById('joinCode').value = '';
+                if (this.pc) this.pc.close();
+                if (this.signalingInterval) clearInterval(this.signalingInterval);
+            },
+            
+            stop() {
+                if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+                if (this.pc) this.pc.close();
+                if (this.signalingInterval) clearInterval(this.signalingInterval);
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                delete codes[this.code];
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('shareSection').style.display = 'none';
+                this.code = '';
+            },
+            
+            disconnect() {
+                if (this.pc) this.pc.close();
+                if (this.signalingInterval) clearInterval(this.signalingInterval);
+                
+                const video = document.getElementById('remoteVideo');
+                video.srcObject = null;
+                
+                document.getElementById('connectionSection').style.display = 'block';
+                document.getElementById('videoContainer').style.display = 'none';
+            },
+            
+            status(msg, elementId, type) {
+                const el = document.getElementById(elementId);
+                el.textContent = msg;
+                el.className = 'status ' + type;
+                el.style.display = 'block';
+            }
+        };
+        
+        app.init();
+    </script>
+</body>
+</html>
