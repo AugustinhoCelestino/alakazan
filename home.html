@@ -109,12 +109,14 @@
                 this.code = '';
                 this.pc = null;
                 this.stream = null;
+                this.TTL = 15 * 60 * 1000; // 15 minutos
                 this.iceServers = [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
                     { urls: 'stun:stun2.l.google.com:19302' }
                 ];
                 this.init();
+                this.cleanupExpiredCodes();
             }
 
             init() {
@@ -132,6 +134,24 @@
                 }
             }
 
+            cleanupExpiredCodes() {
+                const now = Date.now();
+                const stored = localStorage.getItem('activeCodes') || '{}';
+                const codes = JSON.parse(stored);
+                let changed = false;
+                
+                for (let code in codes) {
+                    if (now - codes[code] > this.TTL) {
+                        delete codes[code];
+                        changed = true;
+                    }
+                }
+                
+                if (changed) {
+                    localStorage.setItem('activeCodes', JSON.stringify(codes));
+                }
+            }
+
             share() {
                 navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
                     .then(stream => {
@@ -140,8 +160,23 @@
                         document.getElementById('shareCode').textContent = this.code;
                         document.getElementById('connectionSection').style.display = 'none';
                         document.getElementById('shareSection').style.display = 'block';
-                        sessionStorage.setItem('code_' + this.code, JSON.stringify({ time: Date.now() }));
-                        this.status('✅ Compartilhando! Código: ' + this.code, 'success');
+                        
+                        // Salvar em localStorage com TTL
+                        const stored = localStorage.getItem('activeCodes') || '{}';
+                        const codes = JSON.parse(stored);
+                        codes[this.code] = Date.now();
+                        localStorage.setItem('activeCodes', JSON.stringify(codes));
+                        
+                        this.status('✅ Compartilhando! Código: ' + this.code + ' (válido por 15 min)', 'success');
+                        
+                        // Limpar código expirado após TTL
+                        setTimeout(() => {
+                            const stored = localStorage.getItem('activeCodes') || '{}';
+                            const codes = JSON.parse(stored);
+                            delete codes[this.code];
+                            localStorage.setItem('activeCodes', JSON.stringify(codes));
+                            this.status('⚠️ Código expirou. Inicie novo compartilhamento.', 'error');
+                        }, this.TTL);
                     })
                     .catch(err => this.status('❌ ' + err.message, 'error'));
             }
@@ -149,8 +184,16 @@
             stop() {
                 if (this.stream) this.stream.getTracks().forEach(t => t.stop());
                 if (this.pc) this.pc.close();
+                
+                // Remover código ao parar
+                const stored = localStorage.getItem('activeCodes') || '{}';
+                const codes = JSON.parse(stored);
+                delete codes[this.code];
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                
                 document.getElementById('connectionSection').style.display = 'block';
                 document.getElementById('shareSection').style.display = 'none';
+                this.status('Compartilhamento parado', 'success');
             }
 
             showJoin() {
@@ -161,10 +204,24 @@
             connect() {
                 const code = document.getElementById('joinCode').value.toUpperCase();
                 if (code.length < 6) {
-                    this.status('❌ Código inválido', 'error');
+                    this.status('❌ Código inválido (mínimo 6 caracteres)', 'error');
                     return;
                 }
-                this.status('✅ Conectando...', 'success');
+                
+                this.cleanupExpiredCodes();
+                
+                const stored = localStorage.getItem('activeCodes') || '{}';
+                const codes = JSON.parse(stored);
+                
+                if (!codes[code]) {
+                    this.status('❌ Código não encontrado ou expirou. Solicite um novo código.', 'error');
+                    return;
+                }
+                
+                const age = Date.now() - codes[code];
+                const timeLeft = Math.round((this.TTL - age) / 1000 / 60);
+                
+                this.status('✅ Conectando ao código ' + code + ' (válido por mais ' + timeLeft + ' min)...', 'success');
             }
 
             cancelJoin() {
