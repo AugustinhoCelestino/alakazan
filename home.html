@@ -143,33 +143,34 @@
             }
 
             share() {
+                // Gerar código IMEDIATAMENTE
                 this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
                 console.log('🎯 Código gerado:', this.code);
                 
-                // Salvar código IMEDIATAMENTE (sem esperar getDisplayMedia)
+                // Salvar código em localStorage
                 const stored = localStorage.getItem('activeCodes') || '{}';
                 const codes = JSON.parse(stored);
                 codes[this.code] = true;
                 localStorage.setItem('activeCodes', JSON.stringify(codes));
                 console.log('💾 Salvo em localStorage:', localStorage.getItem('activeCodes'));
                 
+                // Mostrar UI
                 document.getElementById('shareCode').textContent = this.code;
                 document.getElementById('connectionSection').style.display = 'none';
                 document.getElementById('shareSection').style.display = 'block';
-                
                 this.status('✅ Compartilhando! Código: ' + this.code, 'success');
                 
-                // Agora capturar tela (opcional para teste)
-                navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
-                    .then(stream => {
-                        this.stream = stream;
-                        console.log('📹 Tela capturada com sucesso');
-                        this.status('✅ Compartilhando! Código: ' + this.code, 'success');
-                    })
-                    .catch(err => {
-                        console.log('❌ Erro ao capturar tela (normal se cancelou):', err.message);
-                        this.status('✅ Código gerado: ' + this.code + ' (tela não capturada)', 'success');
-                    });
+                // Capturar tela em paralelo (não bloqueia)
+                setTimeout(() => {
+                    navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
+                        .then(stream => {
+                            this.stream = stream;
+                            console.log('📹 Tela capturada com sucesso');
+                        })
+                        .catch(err => {
+                            console.log('ℹ️ Tela não capturada (cancelado ou erro):', err.message);
+                        });
+                }, 100);
             }
 
             stop() {
