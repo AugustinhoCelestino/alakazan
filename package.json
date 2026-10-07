@@ -1,0 +1,23 @@
+{
+  "name": "p2p-screen-share",
+  "version": "1.0.0",
+  "description": "Compartilhamento de tela peer-to-peer simples e seguro",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": [
+    "screen-sharing",
+    "webrtc",
+    "p2p",
+    "peer-to-peer",
+    "screencasting"
+  ],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seu-usuario/alakazan.git"
+  }
+}
