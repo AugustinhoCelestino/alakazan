@@ -269,34 +269,26 @@ class P2PScreenShare {
         });
     }
 
-    // Gerar QR Code
+    // Gerar QR Code usando API online
     generateQRCode(code) {
-        const canvas = document.getElementById('qrCanvas');
-        // Limpar canvas anterior
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const qrContainer = document.querySelector('.qr-container');
+        if (!qrContainer) return;
 
-        // Gerar QR usando QRCode.js
-        new QRCode({
-            text: `${window.location.href}?join=${code}`,
-            width: 200,
-            height: 200,
-            colorDark: '#000000',
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H,
-            useSVG: false
-        }).makeCode();
+        // Limpar conteúdo anterior
+        qrContainer.innerHTML = '';
 
-        // Renderizar no canvas
-        setTimeout(() => {
-            const qrcodeDiv = document.querySelector('.qrcode');
-            if (qrcodeDiv) {
-                const img = qrcodeDiv.querySelector('img');
-                if (img) {
-                    ctx.drawImage(img, 0, 0);
-                }
-            }
-        }, 100);
+        // Criar elemento de imagem com QR code
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+            `${window.location.href}?join=${code}`
+        )}`;
+
+        const img = document.createElement('img');
+        img.src = qrUrl;
+        img.alt = `QR Code para ${code}`;
+        img.style.maxWidth = '200px';
+        img.style.height = 'auto';
+
+        qrContainer.appendChild(img);
     }
 
     // Mostrar status
