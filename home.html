@@ -82,6 +82,7 @@
                 <p style="margin-bottom: 15px;">Código:</p>
                 <div class="code" id="shareCode">ABCD1234</div>
                 <button id="copyCodeBtn" class="btn" style="width: 100%; margin-top: 10px;">📋 Copiar Código</button>
+                <button id="captureScreenBtn" class="btn" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">📹 Capturar Tela (Opcional)</button>
                 <button id="stopShareBtn" class="btn" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">🛑 Parar</button>
             </div>
 
@@ -125,6 +126,7 @@
                 document.getElementById('connectBtn').onclick = () => this.connect();
                 document.getElementById('cancelJoinBtn').onclick = () => this.cancelJoin();
                 document.getElementById('copyCodeBtn').onclick = () => this.copyCode();
+                document.getElementById('captureScreenBtn').onclick = () => this.captureScreen();
                 
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('join')) {
@@ -143,7 +145,7 @@
             }
 
             share() {
-                // Gerar código IMEDIATAMENTE
+                // Gerar código IMEDIATAMENTE (sem bloquear)
                 this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
                 console.log('🎯 Código gerado:', this.code);
                 
@@ -159,18 +161,19 @@
                 document.getElementById('connectionSection').style.display = 'none';
                 document.getElementById('shareSection').style.display = 'block';
                 this.status('✅ Compartilhando! Código: ' + this.code, 'success');
-                
-                // Capturar tela em paralelo (não bloqueia)
-                setTimeout(() => {
-                    navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
-                        .then(stream => {
-                            this.stream = stream;
-                            console.log('📹 Tela capturada com sucesso');
-                        })
-                        .catch(err => {
-                            console.log('ℹ️ Tela não capturada (cancelado ou erro):', err.message);
-                        });
-                }, 100);
+            }
+
+            captureScreen() {
+                navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
+                    .then(stream => {
+                        this.stream = stream;
+                        console.log('📹 Tela capturada com sucesso');
+                        this.status('✅ Tela capturada! Código: ' + this.code, 'success');
+                    })
+                    .catch(err => {
+                        console.log('ℹ️ Captura cancelada:', err.message);
+                        this.status('ℹ️ Captura cancelada (mas código ainda está válido)', 'success');
+                    });
             }
 
             stop() {
