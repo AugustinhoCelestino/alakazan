@@ -69,17 +69,22 @@
             share() {
                 console.log('SHARE CALLED');
                 this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
-                console.log('Código gerado:', this.code);
+                console.log('🎯 Código gerado:', this.code);
+                console.log('🎯 Tipo:', typeof this.code, 'Comprimento:', this.code.length);
                 
                 const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
                 codes[this.code] = true;
                 localStorage.setItem('activeCodes', JSON.stringify(codes));
-                console.log('localStorage:', localStorage.getItem('activeCodes'));
+                
+                const verify = localStorage.getItem('activeCodes');
+                console.log('🎯 Salvo em localStorage:', verify);
+                console.log('🎯 Parse:', JSON.parse(verify));
+                console.log('🎯 Código existe?', JSON.parse(verify)[this.code]);
                 
                 document.getElementById('connectionSection').style.display = 'none';
                 document.getElementById('shareSection').style.display = 'block';
                 document.getElementById('shareCode').textContent = this.code;
-                this.status('✅ Código gerado: ' + this.code, 'ok');
+                this.status('✅ Código gerado: ' + this.code + ' (copie e compartilhe!)', 'ok');
             },
             
             join() {
@@ -88,16 +93,34 @@
             },
             
             connect() {
-                const code = document.getElementById('joinCode').value.toUpperCase();
-                console.log('Conectando com:', code);
+                const code = document.getElementById('joinCode').value.trim().toUpperCase();
+                console.log('🔍 Conectando com:', code);
+                console.log('🔍 Tipo:', typeof code, 'Comprimento:', code.length);
                 
-                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
-                console.log('Códigos disponíveis:', codes);
+                const stored = localStorage.getItem('activeCodes') || '{}';
+                console.log('🔍 Raw localStorage:', stored);
+                
+                const codes = JSON.parse(stored);
+                console.log('🔍 Códigos disponíveis:', Object.keys(codes));
+                console.log('🔍 Valores:', codes);
+                
+                for (let k in codes) {
+                    console.log(`🔍 Comparando "${k}" (${k.length}) com "${code}" (${code.length})`);
+                    if (k === code) {
+                        console.log('✅ MATCH!');
+                    }
+                }
+                
+                if (!code) {
+                    this.status('❌ Digite o código!', 'error');
+                    return;
+                }
                 
                 if (codes[code]) {
                     this.status('✅ Conectado ao ' + code, 'ok');
                 } else {
-                    this.status('❌ Código não encontrado', 'error');
+                    const availableCodes = Object.keys(codes).join(', ') || 'nenhum';
+                    this.status('❌ Código não encontrado. Disponíveis: [' + availableCodes + ']', 'error');
                 }
             },
             
