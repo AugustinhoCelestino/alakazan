@@ -102,7 +102,7 @@
     </div>
 
     <script>
-        console.log('✅ P2P Screen Share v4.0 - Inline HTML - Load Time: ' + new Date().toISOString());
+        console.log('✅ P2P Screen Share v5.0 - Debug Mode');
 
         class ScreenShare {
             constructor() {
@@ -115,6 +115,7 @@
                     { urls: 'stun:stun2.l.google.com:19302' }
                 ];
                 this.init();
+                this.showDebugInfo();
             }
 
             init() {
@@ -132,24 +133,43 @@
                 }
             }
 
+            showDebugInfo() {
+                console.log('📊 DEBUG INFO:');
+                console.log('localStorage:', localStorage.getItem('activeCodes'));
+                console.log('Current URL:', window.location.href);
+                setInterval(() => {
+                    console.log('🔄 Sync: activeCodes =', localStorage.getItem('activeCodes'));
+                }, 2000);
+            }
+
             share() {
+                this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                console.log('🎯 Código gerado:', this.code);
+                
+                // Salvar código IMEDIATAMENTE (sem esperar getDisplayMedia)
+                const stored = localStorage.getItem('activeCodes') || '{}';
+                const codes = JSON.parse(stored);
+                codes[this.code] = true;
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                console.log('💾 Salvo em localStorage:', localStorage.getItem('activeCodes'));
+                
+                document.getElementById('shareCode').textContent = this.code;
+                document.getElementById('connectionSection').style.display = 'none';
+                document.getElementById('shareSection').style.display = 'block';
+                
+                this.status('✅ Compartilhando! Código: ' + this.code, 'success');
+                
+                // Agora capturar tela (opcional para teste)
                 navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false })
                     .then(stream => {
                         this.stream = stream;
-                        this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
-                        document.getElementById('shareCode').textContent = this.code;
-                        document.getElementById('connectionSection').style.display = 'none';
-                        document.getElementById('shareSection').style.display = 'block';
-                        
-                        // Salvar código ativo em localStorage
-                        const stored = localStorage.getItem('activeCodes') || '{}';
-                        const codes = JSON.parse(stored);
-                        codes[this.code] = true;
-                        localStorage.setItem('activeCodes', JSON.stringify(codes));
-                        
+                        console.log('📹 Tela capturada com sucesso');
                         this.status('✅ Compartilhando! Código: ' + this.code, 'success');
                     })
-                    .catch(err => this.status('❌ ' + err.message, 'error'));
+                    .catch(err => {
+                        console.log('❌ Erro ao capturar tela (normal se cancelou):', err.message);
+                        this.status('✅ Código gerado: ' + this.code + ' (tela não capturada)', 'success');
+                    });
             }
 
             stop() {
@@ -161,6 +181,7 @@
                 const codes = JSON.parse(stored);
                 delete codes[this.code];
                 localStorage.setItem('activeCodes', JSON.stringify(codes));
+                console.log('🗑️ Código removido:', this.code);
                 
                 document.getElementById('connectionSection').style.display = 'block';
                 document.getElementById('shareSection').style.display = 'none';
@@ -174,19 +195,32 @@
 
             connect() {
                 const code = document.getElementById('joinCode').value.toUpperCase();
+                console.log('🔍 Tentando conectar com código:', code);
+                
                 if (code.length < 6) {
                     this.status('❌ Código inválido (mínimo 6 caracteres)', 'error');
                     return;
                 }
                 
-                const stored = localStorage.getItem('activeCodes') || '{}';
-                const codes = JSON.parse(stored);
+                const stored = localStorage.getItem('activeCodes');
+                console.log('📖 localStorage.activeCodes =', stored);
                 
-                if (!codes[code]) {
-                    this.status('❌ Código ' + code + ' não encontrado. Verifique se foi digitado corretamente.', 'error');
+                if (!stored) {
+                    this.status('❌ Nenhum código ativo encontrado', 'error');
+                    console.log('❌ localStorage vazio!');
                     return;
                 }
                 
+                const codes = JSON.parse(stored);
+                console.log('🔑 Códigos disponíveis:', Object.keys(codes));
+                
+                if (!codes[code]) {
+                    this.status('❌ Código "' + code + '" não encontrado. Códigos ativos: ' + Object.keys(codes).join(', '), 'error');
+                    console.log('❌ Código não existe em localStorage');
+                    return;
+                }
+                
+                console.log('✅ Código encontrado!');
                 this.status('✅ Conectando ao código ' + code + '...', 'success');
             }
 
