@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Screen Share</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial; background: #0f172a; color: #fff; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; color: #10b981; }
+        .section { background: #1e293b; padding: 25px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #334155; }
+        .section h2 { color: #10b981; margin-bottom: 15px; }
+        button { padding: 12px; font-size: 1em; margin: 10px 5px; cursor: pointer; background: #10b981; color: white; border: none; border-radius: 5px; flex: 1; }
+        button:hover { background: #059669; }
+        button.red { background: #ef4444; }
+        input { width: 100%; padding: 10px; font-size: 1em; margin: 10px 0; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 5px; }
+        video { width: 100%; background: #000; margin: 20px 0; border-radius: 5px; }
+        .code { font-size: 1.8em; font-weight: bold; color: #10b981; padding: 20px; background: #0f172a; text-align: center; margin: 15px 0; border: 2px dashed #10b981; font-family: monospace; border-radius: 5px; }
+        .status { padding: 12px; margin: 15px 0; border-radius: 5px; border-left: 4px solid; }
+        .status.ok { background: rgba(16, 185, 129, 0.1); border-left-color: #10b981; color: #10b981; }
+        .status.error { background: rgba(239, 68, 68, 0.1); border-left-color: #ef4444; color: #ef4444; }
+        .hidden { display: none !important; }
+        .row { display: flex; gap: 10px; }
+        .row button { margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ P2P Screen Share</h1>
+        <div id="statusDiv"></div>
+
+        <!-- Main Menu -->
+        <div id="connectionSection" class="section">
+            <h2>Escolha uma opção</h2>
+            <button id="startShareBtn">🔴 INICIAR COMPARTILHAMENTO</button>
+            <button id="joinBtn">👁️ ASSISTIR COMPARTILHAMENTO</button>
+        </div>
+
+        <!-- Share Mode -->
+        <div id="shareSection" class="section hidden">
+            <h2>Compartilhando Tela</h2>
+            <p>Compartilhe este código:</p>
+            <div class="code" id="shareCode">---</div>
+            <div class="row">
+                <button id="copyCodeBtn">📋 Copiar</button>
+                <button id="captureBtn">📹 Capturar</button>
+            </div>
+            <button id="stopShareBtn" class="red" style="width: 100%; margin-top: 10px;">🛑 Parar</button>
+            <div id="shareStatus" class="status ok hidden"></div>
+        </div>
+
+        <!-- Join Mode -->
+        <div id="viewSection" class="section hidden">
+            <h2>Conectar</h2>
+            <input type="text" id="joinCode" placeholder="Cole o código aqui...">
+            <div class="row">
+                <button id="connectBtn">🔗 Conectar</button>
+                <button id="cancelBtn" class="red">❌ Voltar</button>
+            </div>
+            <div id="viewStatus" class="status ok hidden"></div>
+        </div>
+
+        <!-- Video -->
+        <div id="videoContainer" class="section hidden">
+            <h2>Tela Compartilhada</h2>
+            <video id="remoteVideo" autoplay playsinline muted></video>
+            <button id="disconnectBtn" class="red" style="width: 100%;">❌ Desconectar</button>
+        </div>
+    </div>
+
+    <script>
+        console.log('✅ PAGE LOADED');
+        
+        class P2PShare {
+            constructor() {
+                this.code = '';
+                this.isOfferer = false;
+                this.pc = null;
+                this.stream = null;
+                this.signalingLoop = null;
+                this.ICE_SERVERS = [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ];
+                this.setupUI();
+                console.log('✅ APP READY');
+            }
+            
+            setupUI() {
+                document.getElementById('startShareBtn').onclick = () => this.startShare();
+                document.getElementById('joinBtn').onclick = () => this.showJoin();
+                document.getElementById('captureBtn').onclick = () => this.capture();
+                document.getElementById('stopShareBtn').onclick = () => this.stopShare();
+                document.getElementById('copyCodeBtn').onclick = () => this.copyCode();
+                document.getElementById('connectBtn').onclick = () => this.connect();
+                document.getElementById('cancelBtn').onclick = () => this.cancelJoin();
+                document.getElementById('disconnectBtn').onclick = () => this.disconnect();
+            }
+            
+            startShare() {
+                console.log('[SHARE] Starting...');
+                this.code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                this.isOfferer = true;
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                codes[this.code] = JSON.stringify({ offer: null, answer: null });
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                
+                this.showSection('shareSection');
+                document.getElementById('shareCode').textContent = this.code;
+                this.msg('✅ Código: ' + this.code, 'shareStatus', 'ok');
+                console.log('[SHARE] Code:', this.code);
+            }
+            
+            capture() {
+                console.log('[CAPTURE] Starting display capture...');
+                navigator.mediaDevices.getDisplayMedia({ 
+                    video: { cursor: 'always' }, 
+                    audio: false 
+                }).then(stream => {
+                    console.log('[CAPTURE] Success!');
+                    this.stream = stream;
+                    this.createPeerConnection();
+                    this.msg('✅ Tela capturada! Aguardando espectador...', 'shareStatus', 'ok');
+                    
+                    stream.getTracks()[0].onended = () => this.stopShare();
+                }).catch(err => {
+                    console.log('[CAPTURE] Error:', err.message);
+                    this.msg('❌ ' + err.message, 'shareStatus', 'error');
+                });
+            }
+            
+            createPeerConnection() {
+                console.log('[WebRTC] Creating peer connection...');
+                if (this.pc) this.pc.close();
+                
+                this.pc = new RTCPeerConnection({ iceServers: this.ICE_SERVERS });
+                
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => {
+                        console.log('[WebRTC] Adding track:', track.kind);
+                        this.pc.addTrack(track, this.stream);
+                    });
+                }
+                
+                this.pc.onconnectionstatechange = () => {
+                    console.log('[WebRTC] Connection state:', this.pc.connectionState);
+                };
+                
+                if (this.isOfferer) {
+                    console.log('[WebRTC] Creating OFFER...');
+                    this.pc.createOffer()
+                        .then(offer => {
+                            console.log('[WebRTC] Offer created');
+                            return this.pc.setLocalDescription(offer);
+                        })
+                        .then(() => {
+                            console.log('[WebRTC] Local description set');
+                            const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                            const data = JSON.parse(codes[this.code] || '{}');
+                            data.offer = JSON.stringify(this.pc.localDescription);
+                            codes[this.code] = JSON.stringify(data);
+                            localStorage.setItem('activeCodes', JSON.stringify(codes));
+                            this.startSignaling();
+                        })
+                        .catch(e => console.log('[WebRTC] Error:', e));
+                } else {
+                    console.log('[WebRTC] Waiting for remote tracks...');
+                    this.pc.ontrack = event => {
+                        console.log('[WebRTC] ✅ TRACK RECEIVED:', event.track.kind);
+                        const video = document.getElementById('remoteVideo');
+                        if (video.srcObject !== event.streams[0]) {
+                            video.srcObject = event.streams[0];
+                            this.msg('✅ Recebendo tela!', 'viewStatus', 'ok');
+                        }
+                    };
+                }
+            }
+            
+            connect() {
+                const code = document.getElementById('joinCode').value.trim().toUpperCase();
+                console.log('[JOIN] Connecting with code:', code);
+                
+                if (!code) {
+                    this.msg('❌ Digite um código!', 'viewStatus', 'error');
+                    return;
+                }
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                if (!codes[code]) {
+                    this.msg('❌ Código não encontrado!', 'viewStatus', 'error');
+                    return;
+                }
+                
+                this.code = code;
+                this.isOfferer = false;
+                
+                this.showSection('videoContainer');
+                this.msg('⏳ Conectando...', 'viewStatus', 'ok');
+                
+                this.createPeerConnection();
+                setTimeout(() => this.receiveOffer(), 500);
+            }
+            
+            startSignaling() {
+                console.log('[SIGNALING] Starting offer signaling...');
+                if (this.signalingLoop) clearInterval(this.signalingLoop);
+                
+                this.signalingLoop = setInterval(() => {
+                    const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                    const data = JSON.parse(codes[this.code] || '{}');
+                    
+                    if (data.answer && !this.pc.currentRemoteDescription) {
+                        try {
+                            const answer = JSON.parse(data.answer);
+                            this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+                            console.log('[SIGNALING] ✅ Answer received and applied');
+                        } catch (e) {
+                            console.log('[SIGNALING] Error applying answer:', e);
+                        }
+                    }
+                }, 300);
+            }
+            
+            receiveOffer() {
+                console.log('[SIGNALING] Waiting for offer...');
+                const checkOffer = () => {
+                    const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                    const data = JSON.parse(codes[this.code] || '{}');
+                    
+                    if (!codes[this.code]) {
+                        this.msg('❌ Compartilhamento cancelado!', 'viewStatus', 'error');
+                        return;
+                    }
+                    
+                    if (data.offer && !this.pc.currentRemoteDescription) {
+                        try {
+                            const offer = JSON.parse(data.offer);
+                            console.log('[SIGNALING] Offer received!');
+                            
+                            this.pc.setRemoteDescription(new RTCSessionDescription(offer))
+                                .then(() => {
+                                    console.log('[SIGNALING] Creating answer...');
+                                    return this.pc.createAnswer();
+                                })
+                                .then(answer => {
+                                    return this.pc.setLocalDescription(answer);
+                                })
+                                .then(() => {
+                                    console.log('[SIGNALING] Answer created, saving...');
+                                    const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                                    const current = JSON.parse(codes[this.code] || '{}');
+                                    current.answer = JSON.stringify(this.pc.localDescription);
+                                    codes[this.code] = JSON.stringify(current);
+                                    localStorage.setItem('activeCodes', JSON.stringify(codes));
+                                    console.log('[SIGNALING] ✅ Answer saved');
+                                })
+                                .catch(e => {
+                                    console.log('[SIGNALING] Error:', e);
+                                    setTimeout(checkOffer, 500);
+                                });
+                        } catch (e) {
+                            console.log('[SIGNALING] Parse error:', e);
+                            setTimeout(checkOffer, 500);
+                        }
+                    } else {
+                        setTimeout(checkOffer, 300);
+                    }
+                };
+                checkOffer();
+            }
+            
+            copyCode() {
+                navigator.clipboard.writeText(this.code);
+                this.msg('✅ Código copiado!', 'shareStatus', 'ok');
+            }
+            
+            showJoin() {
+                this.showSection('viewSection');
+            }
+            
+            cancelJoin() {
+                this.showSection('connectionSection');
+                if (this.pc) this.pc.close();
+                if (this.signalingLoop) clearInterval(this.signalingLoop);
+            }
+            
+            stopShare() {
+                console.log('[STOP] Stopping share...');
+                if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+                if (this.pc) this.pc.close();
+                if (this.signalingLoop) clearInterval(this.signalingLoop);
+                
+                const codes = JSON.parse(localStorage.getItem('activeCodes') || '{}');
+                delete codes[this.code];
+                localStorage.setItem('activeCodes', JSON.stringify(codes));
+                
+                this.showSection('connectionSection');
+            }
+            
+            disconnect() {
+                console.log('[DISCONNECT] Disconnecting...');
+                if (this.pc) this.pc.close();
+                if (this.signalingLoop) clearInterval(this.signalingLoop);
+                
+                const video = document.getElementById('remoteVideo');
+                video.srcObject = null;
+                
+                this.showSection('connectionSection');
+            }
+            
+            showSection(name) {
+                document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+                document.getElementById(name).classList.remove('hidden');
+            }
+            
+            msg(text, el, type) {
+                const elem = document.getElementById(el);
+                elem.textContent = text;
+                elem.className = 'status ' + type;
+                elem.classList.remove('hidden');
+            }
+        }
+        
+        const app = new P2PShare();
+    </script>
+</body>
+</html>
