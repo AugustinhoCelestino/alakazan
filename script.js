@@ -1,6 +1,8 @@
 // =======================
 // P2P Screen Share - JavaScript
+// Version: 2.0 (Fixed)
 // =======================
+console.log('🚀 P2P Screen Share v2.0 carregado - QRCode removido');
 
 class P2PScreenShare {
     constructor() {
@@ -267,28 +269,6 @@ class P2PScreenShare {
                 btn.textContent = originalText;
             }, 2000);
         });
-    }
-
-    // Gerar QR Code usando API online
-    generateQRCode(code) {
-        const qrContainer = document.querySelector('.qr-container');
-        if (!qrContainer) return;
-
-        // Limpar conteúdo anterior
-        qrContainer.innerHTML = '';
-
-        // Criar elemento de imagem com QR code
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-            `${window.location.href}?join=${code}`
-        )}`;
-
-        const img = document.createElement('img');
-        img.src = qrUrl;
-        img.alt = `QR Code para ${code}`;
-        img.style.maxWidth = '200px';
-        img.style.height = 'auto';
-
-        qrContainer.appendChild(img);
     }
 
     // Mostrar status
